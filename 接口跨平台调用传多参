@@ -1,0 +1,9 @@
+  [HttpPost]
+        public object CreateContact(JObject jObject)
+        {
+            ContactorResponse obj = new ContactorResponse();
+            obj.UUID = jObject["UUID"].ToString();
+            obj.FromMobileNo = jObject["FromMobileNo"].ToString();
+            obj.DataList = JArray.Parse(jObject["DataList"].ToString()).ToObject<List<TB_Contactor>>();
+            
+        }
