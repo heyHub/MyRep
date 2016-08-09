@@ -1,0 +1,62 @@
+ [HttpPost]
+        [HttpGet]
+        public HttpResponseMessage GetVIPCallRecord()
+        {
+            HttpRequestBase request = ((HttpContextBase)Request.Properties["MS_HttpContext"]).Request;//获取传统context//定义传统request对象
+            string PhoneNO = request.Params["session.sce.PhoneNO"];
+            string SkillGroupID = request.Params["session.sce.SkillGroupID"];
+            List<int> list = null;
+            string[] value = null;
+            if (!string.IsNullOrEmpty(PhoneNO) && !string.IsNullOrEmpty(SkillGroupID))
+            {
+                list = new BLL.TA_CRMReceivePhoneLstBLL().GetPhoneRecord(PhoneNO, int.Parse(SkillGroupID));
+                if (list != null && list.Count > 0)
+                {
+                    value = new[] { list[0].ToString(), list[1].ToString(), list[2].ToString() };
+                }
+                else
+                {
+                    value = new[] { "0", "0", "0" };
+                }
+            }
+            else
+            {
+                value = new[] { "0", "0", "0" };
+            }
+            return CreateXml("Recored1 Recored2 Recored3", value);
+
+        }
+        
+         public HttpResponseMessage CreateXml(string namelist, string[] value)
+        {
+            XmlDocument xmlDoc = new XmlDocument();
+            XmlDeclaration xmlDec;
+            xmlDec = xmlDoc.CreateXmlDeclaration("1.0", "UTF-8", null);
+
+            XmlElement vxmlEle = xmlDoc.CreateElement("vxml");
+            vxmlEle.SetAttribute("version", "1.0");
+            string[] str = namelist.Split(' ');
+            for (int i = 0; i < str.Length; i++)
+            {
+                if (str[i] == "")
+                    continue;
+                XmlElement varEle = xmlDoc.CreateElement("var");
+                varEle.SetAttribute("name", str[i]);
+                varEle.SetAttribute("expr", "'" + value[i] + "'");
+                vxmlEle.AppendChild(varEle);
+            }
+
+            XmlElement formEle = xmlDoc.CreateElement("form");
+
+            XmlElement blockEle = xmlDoc.CreateElement("block");
+
+            XmlElement returnEle = xmlDoc.CreateElement("return");
+            returnEle.SetAttribute("namelist", namelist);
+
+            blockEle.AppendChild(returnEle);
+            formEle.AppendChild(blockEle);
+
+            vxmlEle.AppendChild(formEle);
+            xmlDoc.AppendChild(vxmlEle);
+            return new HttpResponseMessage { Content = new StringContent(xmlDoc.InnerXml, System.Text.Encoding.UTF8, "application/xml") };
+        }
