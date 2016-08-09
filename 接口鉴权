@@ -1,0 +1,134 @@
+2.1.3鉴权定义
+组织机构代码：aa001
+accesskey        sdfsdfsdf
+
+组织机构代码：100035
+accesskey        adfdfdfdswee 
+
+一、签名参数token生成的方法
+第1步: 将所有参数（注意是所有参数），按参数名升序排序。
+第2步: 然后把排序后的参数按参数1值1参数2值2…参数n值n（这里的参数和值必须是传输参数的原始值，不能是经过处理的。
+第3步: 把分配给接入方的orgCode和验证密钥key拼接在第2步得到的字符串前面。
+第4步: 在上一步得到的字符串 计算md5（32位大写）值，得到的字符串作为token的值。
+
+举例：
+假设POST传输的参数是
+
+  "p2": "fok",
+  "p1": null,
+  "m": "深圳",
+  "a": "105",
+  "g": "",
+  "d": "98"
+
+
+第一步，拼接字符串(值是空的参数p1,g除外)，剩下p2,m,a,d拼接，并按参数名字符升序排序，最后得到a105d98m深圳p2fok
+第二步，在上面拼接得到的字符串前加上验证密钥key，我们假设是C8653B32CB293FED9048A2F7FD822A28，
+最终得到新的字符串a105d98m深圳p2fok 1001 C8653B32CB293FED9048A2F7FD822A28
+第三步，然后将这个字符串进行md5(32位大写)计算，
+得到MD5加密后的值，这个值即为token签名值。
+注意，计算md5之前请确保接口与接入方的字符串编码一致，如统一使用utf-8编码，如果编码方式不一致则计算出来的签名会校验失败。
+
+二、签名验证方法：
+根据前面描述的签名参数token生成的方法规则，计算得到参数的签名值，和传输过来的token对应的参数值进行对比，如果是一致的，那么就校验通过，如果不一致，说明参数被修改过。
+
+C#获取token范例
+        /// <summary>
+        /// MD5加密
+        /// </summary>
+        /// <param name="orgCode">Organization Code</param>
+        /// <param name="key">access Key</param>
+        /// <param name="paramValue">Parameter Value</param>
+        /// <returns>MD5 Result</returns>
+        public static string Md5Encryption(string orgCode, string key, Dictionary<string, string> dicParams)
+        {
+            var orderbyDic = from dicAsc in dicParams orderby dicAsc.Key select dicAsc;
+            string sortAfterValue = string.Empty;
+            string md5Value = string.Empty;
+            foreach (KeyValuePair<string,string> para in orderbyDic)
+            {
+                sortAfterValue = sortAfterValue + para.Key + para.Value;
+            }
+            string totalString = sortAfterValue + orgCode + key;
+
+            //MD5 Encryption
+            MD5 md5 = new MD5CryptoServiceProvider();
+            byte[] md5Result = md5.ComputeHash(Encoding.Unicode.GetBytes(totalString));
+            //return Encryption Result
+            for (int j = 0; j < md5Result.Length; j++)
+            {
+                md5Value = md5Value + md5Result[j].ToString("X2");
+            }
+            return md5Value;
+        }
+
+string orgCode = "kye001";
+string orgKey = "D3280A953B8F5913A9C633986D68AC56";
+Dictionary<string, string> dicParams = new Dictionary<string, string>();
+dicParams.Add("flightNo", flightNo);
+dicParams.Add("flightDate", flightDate);
+token  = Md5Encryption (orgCode, orgKey, dicParams)；
+
+C#调用WebApi范例（GET）
+        public static string submitWebMessage(string reqUrl)
+        {
+            string strResult = "";
+            reqUrl = UrlEncode(reqUrl);
+            try
+            {
+                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(reqUrl);
+                //声明一个HttpWebRequest请求
+                request.Timeout = 30000;
+                //设置连接超时时间
+                request.Headers.Set("Pragma", "no-cache");
+                HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+                Stream streamReceive = response.GetResponseStream();
+                //Encoding encoding = Encoding.GetEncoding("GB2312");
+                Encoding encoding = Encoding.GetEncoding("UTF-8");
+                StreamReader streamReader = new StreamReader(streamReceive, encoding);
+                strResult = streamReader.ReadToEnd();
+            }
+            catch (Exception)
+            {
+
+            }
+            return strResult;
+        }
+
+		public static string UrlEncode(string url)
+        {
+            Encoding enc = Encoding.GetEncoding("GB2312");
+            byte[] data;
+            int i, len;
+            StringBuilder buffer;
+
+            data = enc.GetBytes(url);
+            len = data.Length;
+            buffer = new StringBuilder(len * 3);
+            for (i = 0; i < len; i++)
+            {
+                if (data[i] > 128)
+                {
+                    buffer.Append("%");
+                    buffer.Append(data[i].ToString("X2"));
+                    i++;
+                    buffer.Append("%");
+                    buffer.Append(data[i].ToString("X2"));
+                }
+                else
+                {
+                    //buf[j] = data[i];
+                    buffer.Append(enc.GetString(data, i, 1));
+                }
+            }
+
+            return buffer.ToString();
+        }
+
+
+C# NewtonSoftJson解析json字符串：
+
+		string  ret = "{"Result":"94218.9700","errMsg":"操作成功","errCode":"1","retStatus":1}";
+                var jsonObj = JObject.Parse(ret);
+
+         string Result = jsonObj["Result "].ToString();
