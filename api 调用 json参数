@@ -1,0 +1,426 @@
+ public class RequestHelper
+    {
+        
+
+        public const string Keys = "tokenprie";
+        public const string apiUrl = "localhost/";
+        public const string MethodName = "Push_Order";
+
+
+        #region PostWebService
+        /// <summary>
+        /// 使用httpRequest模拟浏览器 post 方法 调用 webservice 
+        /// </summary>
+        /// <param name="MethodName">方法名称</param>
+        /// <param name="Param">参数</param>
+        /// <param name="token">token</param>
+        /// <returns></returns>
+        public static string PostWebService(string Param, string token)
+        {
+            string jsonStr = string.Empty;
+            try
+            {
+                string url = apiUrl;
+                string kye = "10018";
+
+                HttpWebRequest request = (HttpWebRequest)HttpWebRequest.Create(url + MethodName);
+                request.Method = WebRequestMethods.Http.Post;
+                request.ContentType = "application/json";
+
+                request.Headers.Add("kye", kye);
+                request.Headers.Add("access-token", token);
+
+                request.Credentials = CredentialCache.DefaultCredentials;
+                request.KeepAlive = true;
+
+                SetWebRequest(request);
+                byte[] data = Encoding.UTF8.GetBytes(Param);
+                WriteRequestData(request, data);
+                jsonStr = ReadXmlResponse(request.GetResponse());
+            }
+            catch (WebException ex)
+            {
+                jsonStr = ex.Message;
+            }
+            return jsonStr;
+        }
+
+        private static void SetWebRequest(HttpWebRequest request)
+        {
+            request.Credentials = CredentialCache.DefaultCredentials;
+            request.Timeout = 120000;
+        }
+
+        private static byte[] EncodePars(Hashtable Pars)
+        {
+            return Encoding.UTF8.GetBytes(ParsToString(Pars));
+        }
+
+        private static void WriteRequestData(HttpWebRequest request, byte[] data)
+        {
+            request.ContentLength = data.Length;
+            Stream writer = request.GetRequestStream();
+            writer.Write(data, 0, data.Length);
+            writer.Close();
+        }
+
+        private static String ParsToString(Hashtable Pars)
+        {
+            StringBuilder sb = new StringBuilder();
+            foreach (string k in Pars.Keys)
+            {
+                if (sb.Length > 0)
+                {
+                    sb.Append("&");
+                }
+                sb.AppendFormat("{0}={1}", HttpUtility.UrlEncode(k), HttpUtility.UrlEncode(Pars[k].ToString()));
+            }
+            return sb.ToString();
+        }
+
+        private static string ReadXmlResponse(WebResponse response)
+        {
+            using (StreamReader sr = new StreamReader(response.GetResponseStream(), Encoding.UTF8))//
+            {
+                String retXml = sr.ReadToEnd();
+                sr.Close();
+                return retXml;
+            }
+        }
+        #endregion
+
+
+        /// <summary>
+        /// 返回token和json字符串
+        /// </summary>
+        /// <param name="filterParam">过滤掉的参数</param>
+        /// <param name="specialParam">外部处理的特殊参数</param>
+        /// <returns></returns>
+        public static string[] getHashTableByForm(Dictionary<string, string> filterParam, Dictionary<string, string> specialParam)
+        {
+            string orgKey = Keys;
+            Hashtable ht = new Hashtable();
+            string[] form = HttpContext.Current.Request.Form.AllKeys;
+
+
+            foreach (string key in form)
+            {
+                if (filterParam.ContainsKey(key))
+                    continue;
+                string param = Post(key).Trim();
+                ht.Add(key, param);
+            }
+
+            //处理自定义的特殊参数
+            foreach (KeyValuePair<string, string> item in specialParam)
+            {
+                if (ht.ContainsKey(item.Key))
+                {
+                    ht[item.Key] = item.Value;
+                }
+                else
+                {
+                    ht.Add(item.Key, item.Value);
+                }
+            }
+
+            ArrayList list = new ArrayList(ht.Keys);
+            list.Sort();
+
+            string token = "";
+            StringBuilder sb = new StringBuilder();
+            StringBuilder sbJson = new StringBuilder();
+            sbJson.Append("{");
+            for (int i = 0; i < list.Count; i++)
+            {
+                if (!string.IsNullOrEmpty(ht[list[i]].ToString()))
+                    sb.Append(list[i] + ht[list[i]].ToString());
+                sbJson.AppendFormat("\"{0}\":\"{1}\",", list[i], ht[list[i]].ToString());
+            }
+            string json = sbJson.ToString().TrimEnd(',') + "}";
+
+            token = orgKey + sb.ToString();
+            token = FormsAuthentication.HashPasswordForStoringInConfigFile(token, "MD5").ToUpper();
+
+            string[] result = new string[2];
+            result[0] = json;
+            result[1] = token;
+            return result;
+        }
+
+        /// <summary>
+        /// 返回token和参数拼接成的json字符串
+        /// </summary>
+        /// <param name="param">接口需要的参数,不进行排序</param>
+        /// <returns></returns>
+        public static string[] getHashTableByForm(Dictionary<string, string> param)
+        {
+            string orgKey = Keys;
+            Hashtable ht = new Hashtable();
+
+            //处理自定义的特殊参数
+            foreach (KeyValuePair<string, string> item in param)
+            {
+                ht.Add(item.Key, item.Value);
+            }
+
+            ArrayList list = new ArrayList(ht.Keys);
+            list.Sort();
+
+            string token = "";
+            StringBuilder sb = new StringBuilder();
+            StringBuilder sbJson = new StringBuilder();
+            sbJson.Append("{");
+            for (int i = 0; i < list.Count; i++)
+            {
+                if (!string.IsNullOrEmpty(ht[list[i]].ToString()))
+                    sb.Append(list[i] + ht[list[i]].ToString());
+                sbJson.AppendFormat("\"{0}\":\"{1}\",", list[i], ht[list[i]].ToString());
+            }
+            string json = sbJson.ToString().TrimEnd(',') + "}";
+
+            token = orgKey + sb.ToString();
+            token = FormsAuthentication.HashPasswordForStoringInConfigFile(token, "MD5").ToUpper();
+
+            string[] result = new string[2];
+            result[0] = json;
+            result[1] = token;
+            return result;
+        }
+
+        public static string[] getParamByDic(Dictionary<string, string> param)
+        {
+            string orgKey = Keys;
+
+            string token = "";
+            StringBuilder sb = new StringBuilder();
+            StringBuilder sbJson = new StringBuilder();
+            sbJson.Append("{");
+            foreach (KeyValuePair<string, string> list in param)
+            {
+                if (!string.IsNullOrEmpty(list.Value.ToString()))
+                    sb.Append(list.Key + list.Value);
+                sbJson.AppendFormat("\"{0}\":\"{1}\",", list.Key, list.Value);
+            }
+            string json = sbJson.ToString().TrimEnd(',') + "}";
+
+            token = orgKey + sb.ToString();
+            token = FormsAuthentication.HashPasswordForStoringInConfigFile(token, "MD5").ToUpper();
+
+            string[] result = new string[2];
+            result[0] = json;
+            result[1] = token;
+            return result;
+        }
+
+
+        /// <summary>
+        /// 获得指定表单参数的值
+        /// </summary>
+        /// <param name="strName">表单参数</param>
+        /// <returns>表单参数的值</returns>
+        public static string Post(string name)
+        {
+            if (HttpContext.Current.Request.Params[name] == null)
+            {
+                return "";
+            }
+            return GetParameterTG(HttpContext.Current, name);
+        }
+
+        #region GetParameterTG
+
+        /// <summary>
+        /// 获取请求参数值（字符型）
+        /// </summary>
+        /// <param name="context"></param>
+        /// <param name="paraName"></param>
+        /// <returns></returns>
+        public static string GetParameterTG(HttpContext context, string paraName)
+        {
+            //string flag = "false";
+            string newresult = string.Empty;
+            try
+            {
+                if (context.Request.Params[paraName] != null)
+                    newresult = context.Request.Params[paraName];
+
+
+                newresult = FilteSQLStr(newresult);
+                newresult = SqlFilter(newresult);
+                newresult = ReplaceSQLChar(newresult);
+                newresult = NoHtml(newresult);
+
+
+            }
+            catch
+            {
+                newresult = string.Empty;
+            }
+            //if (result == newresult)
+            //{
+            //    flag = "true";
+            //}
+            //else
+            //{
+            //    flag = "false";
+            //}
+            return newresult;
+        }
+
+        /// <summary>
+        /// 过滤不安全的字符串
+        /// </summary>
+        /// <param name="Str"></param>
+        /// <returns></returns>
+        public static string FilteSQLStr(string Str)
+        {
+
+            Str = Str.Replace("'", "");
+            Str = Str.Replace("\"", "");
+            Str = Str.Replace("&", "&amp");
+            Str = Str.Replace("<", "&lt");
+            Str = Str.Replace(">", "&gt");
+
+            Str = Str.Replace("delete", "");
+            Str = Str.Replace("update", "");
+            Str = Str.Replace("insert", "");
+
+            return Str;
+        }
+
+        /// <summary>
+        /// 过滤 Sql 语句字符串中的注入脚本
+        /// </summary>
+        /// <param name="source">传入的字符串</param>
+        /// <returns>过滤后的字符串</returns>
+        public static string SqlFilter(string source)
+        {
+            //单引号替换成两个单引号
+            source = source.Replace("'", "''");
+
+            //半角封号替换为全角封号，防止多语句执行
+            source = source.Replace(";", "；");
+
+            //半角括号替换为全角括号
+            source = source.Replace("(", "（");
+            source = source.Replace(")", "）");
+
+            ///////////////要用正则表达式替换，防止字母大小写得情况////////////////////
+
+            //去除执行存储过程的命令关键字
+            source = source.Replace("Exec", "");
+            source = source.Replace("Execute", "");
+
+            //去除系统存储过程或扩展存储过程关键字
+            source = source.Replace("xp_", "x p_");
+            source = source.Replace("sp_", "s p_");
+
+            //防止16进制注入
+            source = source.Replace("0x", "0 x");
+
+            return source;
+        }
+
+
+        /// 过滤SQL字符。
+        /// </summary>
+        /// <param name="str">要过滤SQL字符的字符串。</param>
+        /// <returns>已过滤掉SQL字符的字符串。</returns>
+        public static string ReplaceSQLChar(string str)
+        {
+            if (str == String.Empty)
+                return String.Empty; str = str.Replace("'", "‘");
+            str = str.Replace(";", "；");
+            str = str.Replace(",", ",");
+            str = str.Replace("?", "?");
+            str = str.Replace("<", "＜");
+            str = str.Replace(">", "＞");
+            str = str.Replace("(", "(");
+            str = str.Replace(")", ")");
+            str = str.Replace("@", "＠");
+            str = str.Replace("=", "＝");
+            str = str.Replace("+", "＋");
+            str = str.Replace("*", "＊");
+            str = str.Replace("&", "＆");
+            str = str.Replace("#", "＃");
+            str = str.Replace("%", "％");
+            str = str.Replace("$", "￥");
+
+            return str;
+        }
+
+        /// <summary>
+        /// 过滤标记
+        /// </summary>
+        /// <param name="NoHTML">包括HTML，脚本，数据库关键字，特殊字符的源码 </param>
+        /// <returns>已经去除标记后的文字</returns>
+        public static string NoHtml(string Htmlstring)
+        {
+            if (Htmlstring == null)
+            {
+                return "";
+            }
+            else
+            {
+                //删除脚本
+                Htmlstring = Regex.Replace(Htmlstring, @"<script[^>]*?>.*?</script>", "", RegexOptions.IgnoreCase);
+                //删除HTML
+                Htmlstring = Regex.Replace(Htmlstring, @"<(.[^>]*)>", "", RegexOptions.IgnoreCase);
+                Htmlstring = Regex.Replace(Htmlstring, @"([\r\n])[\s]+", "", RegexOptions.IgnoreCase);
+                Htmlstring = Regex.Replace(Htmlstring, @"-->", "", RegexOptions.IgnoreCase);
+                Htmlstring = Regex.Replace(Htmlstring, @"<!--.*", "", RegexOptions.IgnoreCase);
+                Htmlstring = Regex.Replace(Htmlstring, @"&(quot|#34);", "\"", RegexOptions.IgnoreCase);
+                Htmlstring = Regex.Replace(Htmlstring, @"&(amp|#38);", "&", RegexOptions.IgnoreCase);
+                Htmlstring = Regex.Replace(Htmlstring, @"&(lt|#60);", "<", RegexOptions.IgnoreCase);
+                Htmlstring = Regex.Replace(Htmlstring, @"&(gt|#62);", ">", RegexOptions.IgnoreCase);
+                Htmlstring = Regex.Replace(Htmlstring, @"&(nbsp|#160);", " ", RegexOptions.IgnoreCase);
+                Htmlstring = Regex.Replace(Htmlstring, @"&(iexcl|#161);", "\xa1", RegexOptions.IgnoreCase);
+                Htmlstring = Regex.Replace(Htmlstring, @"&(cent|#162);", "\xa2", RegexOptions.IgnoreCase);
+                Htmlstring = Regex.Replace(Htmlstring, @"&(pound|#163);", "\xa3", RegexOptions.IgnoreCase);
+                Htmlstring = Regex.Replace(Htmlstring, @"&(copy|#169);", "\xa9", RegexOptions.IgnoreCase);
+                Htmlstring = Regex.Replace(Htmlstring, @"&#(\d+);", "", RegexOptions.IgnoreCase);
+                Htmlstring = Regex.Replace(Htmlstring, "xp_cmdshell", "", RegexOptions.IgnoreCase);
+
+                //删除与数据库相关的词
+                Htmlstring = Regex.Replace(Htmlstring, "select", "", RegexOptions.IgnoreCase);
+                Htmlstring = Regex.Replace(Htmlstring, "insert", "", RegexOptions.IgnoreCase);
+                Htmlstring = Regex.Replace(Htmlstring, "delete from", "", RegexOptions.IgnoreCase);
+                Htmlstring = Regex.Replace(Htmlstring, "count''", "", RegexOptions.IgnoreCase);
+                Htmlstring = Regex.Replace(Htmlstring, "drop table", "", RegexOptions.IgnoreCase);
+                Htmlstring = Regex.Replace(Htmlstring, "truncate", "", RegexOptions.IgnoreCase);
+                Htmlstring = Regex.Replace(Htmlstring, "asc", "", RegexOptions.IgnoreCase);
+                Htmlstring = Regex.Replace(Htmlstring, "mid", "", RegexOptions.IgnoreCase);
+                Htmlstring = Regex.Replace(Htmlstring, "char", "", RegexOptions.IgnoreCase);
+                Htmlstring = Regex.Replace(Htmlstring, "xp_cmdshell", "", RegexOptions.IgnoreCase);
+                Htmlstring = Regex.Replace(Htmlstring, "exec master", "", RegexOptions.IgnoreCase);
+                Htmlstring = Regex.Replace(Htmlstring, "net localgroup administrators", "", RegexOptions.IgnoreCase);
+                Htmlstring = Regex.Replace(Htmlstring, " and ", "", RegexOptions.IgnoreCase);
+                Htmlstring = Regex.Replace(Htmlstring, "net user", "", RegexOptions.IgnoreCase);
+                Htmlstring = Regex.Replace(Htmlstring, "or", "", RegexOptions.IgnoreCase);
+                Htmlstring = Regex.Replace(Htmlstring, "net", "", RegexOptions.IgnoreCase);
+                //Htmlstring = Regex.Replace(Htmlstring, "*", "", RegexOptions.IgnoreCase);
+                //Htmlstring = Regex.Replace(Htmlstring, "-", "", RegexOptions.IgnoreCase);
+                Htmlstring = Regex.Replace(Htmlstring, "delete", "", RegexOptions.IgnoreCase);
+                Htmlstring = Regex.Replace(Htmlstring, "drop", "", RegexOptions.IgnoreCase);
+                Htmlstring = Regex.Replace(Htmlstring, "script", "", RegexOptions.IgnoreCase);
+
+                //特殊的字符
+                Htmlstring = Htmlstring.Replace("<", "");
+                Htmlstring = Htmlstring.Replace(">", "");
+                Htmlstring = Htmlstring.Replace("*", "");
+                //Htmlstring = Htmlstring.Replace("-", "");
+                Htmlstring = Htmlstring.Replace("?", "");
+                Htmlstring = Htmlstring.Replace("'", "''");
+                Htmlstring = Htmlstring.Replace(",", "");
+                Htmlstring = Htmlstring.Replace("/", "");
+                Htmlstring = Htmlstring.Replace(";", "");
+                Htmlstring = Htmlstring.Replace("*/", "");
+                Htmlstring = Htmlstring.Replace("\r\n", "");
+                Htmlstring = HttpContext.Current.Server.HtmlEncode(Htmlstring);
+
+                return Htmlstring;
+            }
+
+        }
+    }
