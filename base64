@@ -1,0 +1,83 @@
+
+        private string GetBaseCode(string filePath)
+        {
+
+            string base64 = string.Empty;
+            if (!string.IsNullOrEmpty(filePath))
+            {
+                HttpWebRequest webrequest = (HttpWebRequest)HttpWebRequest.Create(filePath);
+                HttpWebResponse response = (HttpWebResponse)webrequest.GetResponse();
+                Stream stream = response.GetResponseStream();
+                BinaryReader reader = new BinaryReader(stream);
+                byte[] arr = reader.ReadBytes(1024 * 500);
+                string str64 = Convert.ToBase64String(arr);
+                base64 = str64;
+                reader.Close();
+                stream.Close();
+            }
+            return base64;
+            //int BufferLen = 0;
+            //HttpWebRequest webrequest = (HttpWebRequest)HttpWebRequest.Create(url);
+            //HttpWebResponse webreponse = (HttpWebResponse)webrequest.GetResponse();
+            //using (Stream stream = webreponse.GetResponseStream())
+            //{
+            //    if (BufferLen < 1)
+            //    { BufferLen = 0x8000; }
+            //    byte[] buffer = new byte[BufferLen];
+            //    int read = 0; int block;
+            //    while ((block = stream.Read(buffer, read, buffer.Length - read)) > 0)
+            //    {
+            //        read += block;
+            //        if (read == buffer.Length)
+            //        {
+            //            int nextByte = stream.ReadByte();
+            //            if (nextByte == -1)
+            //            {
+            //                return string.Empty;
+            //            }
+            //            byte[] newBuf = new byte[buffer.Length * 2]; Array.Copy(buffer, newBuf, buffer.Length);
+            //            newBuf[read] = (byte)nextByte; buffer = newBuf;
+            //            read++;
+            //        }
+            //    }
+            //    byte[] ret = new byte[read]; 
+            //    Array.Copy(buffer, ret, read);
+            //    return Convert.ToBase64String(ret);
+
+        }
+        
+          private string SaveAutoFile(string AutoBaseCode, string FilePath)
+        {
+            string fileSrc = string.Empty;
+            if (!string.IsNullOrWhiteSpace(AutoBaseCode))
+            {
+                DateTime dt = DateTime.Now;
+                string filePath = string.Format("{0}\\{1}\\{2}", FilePath, "HotelLineAudio", Utils.FormatDate(dt, "0"));
+                string UniqueId = dt.ToString("yyyyMMddhhmmssfff") + Utils.CreateRandomCode(6);
+                fileSrc = string.Format("{0}\\{1}.{2}", filePath, UniqueId, "mp3");
+                if (!Directory.Exists(filePath))
+                {
+                    Directory.CreateDirectory(filePath);
+                }
+                byte[] bytes = Convert.FromBase64String(AutoBaseCode);
+                using (Stream fs = new FileStream(fileSrc, FileMode.Create))
+                {
+                    fs.Write(bytes, 0, bytes.Length);
+                }
+            }
+            return fileSrc;
+        }
+
+
+        private string GetBaseCodeLocal(string filePath)
+        {
+            string baseCode = string.Empty;
+            if (!File.Exists(filePath) || string.IsNullOrEmpty(filePath)) return baseCode;
+            using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                byte[] bytes = new byte[fs.Length];
+                fs.Read(bytes, 0, bytes.Length);
+                baseCode = Convert.ToBase64String(bytes);
+            }
+            return baseCode;
+        }
