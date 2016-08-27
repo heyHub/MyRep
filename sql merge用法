@@ -1,0 +1,10 @@
+merge into TableThat as a 
+using TableThis as b
+    on a.tbThisID = b.tbThisID
+when matched then
+    update set a.tbContent=a.tbContent+'-'+b.tbThisPhone
+when not matched then 
+insert (tbThisID,tbContent)
+values(b.tbThisID,b.tbThisPhone);
+
+http://www.cnblogs.com/scy251147/archive/2011/05/30/2063672.html
