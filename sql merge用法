@@ -8,3 +8,9 @@ insert (tbThisID,tbContent)
 values(b.tbThisID,b.tbThisPhone);
 
 http://www.cnblogs.com/scy251147/archive/2011/05/30/2063672.html
+http://www.cnblogs.com/CareySon/archive/2012/03/07/2383690.html
+
+
+Merge关键字的一些限制
+    使用Merge关键字只能更新一个表
+    源表中不能有重复的记录
