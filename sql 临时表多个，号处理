@@ -1,0 +1,21 @@
+ declare @Temp_Variable varchar(max),@Temp_Array varchar(max)
+   SET @Temp_Array='1,2,3,4,5,6'
+        create table #Temp_Table(Item varchar(max))
+        while(LEN(@Temp_Array) > 0)
+        begin
+            if(CHARINDEX(',',@Temp_Array) = 0)
+            begin
+                set @Temp_Variable = @Temp_Array
+                set @Temp_Array = ''
+            end
+            else
+            begin
+                set @Temp_Variable = LEFT(@Temp_Array,CHARINDEX(',',@Temp_Array)-1)
+                set @Temp_Array = RIGHT(@Temp_Array,LEN(@Temp_Array)-LEN(@Temp_Variable)-1)
+				SELECT @Temp_Array
+            end    
+		
+        insert into #Temp_Table(Item) values(@Temp_Variable)
+        end    
+        select * from dbo.TT(nolock) where exists(select 1 from #Temp_Table(nolock) where #Temp_Table.Item=dbo.TT.OBJECT_ID)
+        drop table #Temp_Table
