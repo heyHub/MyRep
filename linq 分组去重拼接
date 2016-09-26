@@ -1,0 +1,33 @@
+  if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                DataTable dt = ds.Tables[0];
+                var groups = dt.AsEnumerable().GroupBy(dr => dr["coding"].ToString());
+                if (groups.Count() > 0)
+                {
+                    foreach (var group in groups)
+                    {
+                        string strName = "";
+                        DataRow dr = group.First();
+                        DataRow[] rows = dt.Select("coding='" + dr["coding"].ToString() + "'");
+                        if (rows.Count() > 0)
+                        {
+                            foreach (DataRow row in rows)
+                            {
+                                if (!strName.Contains(row["jurisdiction"].ToString()))
+                                {
+                                    strName += row["jurisdiction"].ToString() + "-";
+                                }
+                            }
+                            objList.Add(new
+                            {
+                                coding = dr["coding"].ToString(),//管理编码 
+                                theme = dr["theme"].ToString(),//主题  
+                                toperson = dr["A_object"].ToString(),//对象 A_object
+                                jurisdiction = strName.Contains("-") ? strName.Remove(strName.Length - 1) : strName,//权限 
+                                createtime = string.IsNullOrEmpty(dr["sysdatetimes"].ToString()) ? "" : DateTime.Parse(dr["sysdatetimes"].ToString()).ToString("yyyy-MM-dd"),//录单时间sysdatetimes 
+                                endtime = string.IsNullOrEmpty(dr["end_time"].ToString()) ? "" : DateTime.Parse(dr["end_time"].ToString()).ToString("yyyy-MM-dd")//结束时间end_time  
+
+                            });
+                        }
+                    }
+                }
